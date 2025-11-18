@@ -1,21 +1,26 @@
 import jwt
+import bcrypt
 from datetime import datetime, timedelta
 from fastapi import HTTPException, Header
-from passlib.context import CryptContext
 from config import JWT_SECRET, JWT_ALGO
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+def hash_password(password: str) -> str:
+    """
+    Hash a password using bcrypt with a randomly generated salt
+    """
+    password_bytes = password.encode("utf-8")
+    salt = bcrypt.gensalt(rounds=12)  # default 12 rounds
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    return hashed.decode("utf-8")  # store as string in DB
 
-# Hash password
-def hash_password(password: str):
-    return pwd_context.hash(password)
 
-# Verify password
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Verify a plain password against a hashed password
+    """
+    return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
 
-# Create JWT token
-def create_token(username: str, role: str):
+def create_token(username: str, role: str) -> str:
     payload = {
         "user": username,
         "role": role,
@@ -23,7 +28,7 @@ def create_token(username: str, role: str):
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGO)
 
-# Verify JWT token
+
 def verify_token(authorization: str = Header(...)):
     try:
         scheme, token = authorization.split()
@@ -31,11 +36,9 @@ def verify_token(authorization: str = Header(...)):
             raise HTTPException(status_code=401, detail="Invalid auth scheme")
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
         return payload
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
-# Admin check
 def admin_required(token_data):
     if token_data.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin-only route")
-
