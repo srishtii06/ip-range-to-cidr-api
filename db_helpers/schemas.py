@@ -14,3 +14,12 @@ class HistoryResponse(BaseModel):
     end_ip: str
     cidrs: str
     created_at: str
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+class RegisterRequest(BaseModel):
+    username: str
+    password: str
+    role: str = "guest"  # optional
